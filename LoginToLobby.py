@@ -1,8 +1,10 @@
 import time
-from PIL import Image
+from PIL import Image  # Ensure Pillow is correctly installed
 import numpy as np
 from appium import webdriver
 from appium.options.android import UiAutomator2Options
+from skimage.metrics import structural_similarity as ssim
+
 
 # Device Caps (Setting up Appium capabilities)
 options = UiAutomator2Options()
