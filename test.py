@@ -5,7 +5,7 @@ from PIL import Image
 pytesseract.pytesseract.tesseract_cmd = r"/opt/homebrew/bin/tesseract"  # Update with the correct path
 
 # Sample image file
-image = Image.open("/Users/mohamedakkim/eclipse-workspace/PythonMeta/debug_cropped_image.png")  # Update this with your image file
+image = Image.open("/Users/mohamedakkim/eclipse-workspace/PythonMeta/references/gang.jpg")  # Update this with your image file
 
 # Extract text from the image
 text = pytesseract.image_to_string(image)
