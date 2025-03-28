@@ -6,7 +6,6 @@ import base64
 from appium import webdriver
 from appium.options.android import UiAutomator2Options
 import pytesseract
-from Rough import target_text
 from skimage.metrics import structural_similarity as ssim
 import numpy as np
 
@@ -14,7 +13,6 @@ import numpy as np
 pytesseract.pytesseract.tesseract_cmd = r"/opt/homebrew/bin/tesseract"
 
 def setup_device():
-    
     options = UiAutomator2Options()
     options.platform_name = "Android"
     options.platform_version = "14"
@@ -22,14 +20,12 @@ def setup_device():
     options.app_package = "com.mayhem.ugwob"
     options.app_activity = "com.epicgames.ue4.GameActivity"
     options.no_reset = True
-
     driver = webdriver.Remote("http://127.0.0.1:4723", options=options)
     print("App Launched Successfully!")
-    time.sleep(10)  # Wait for app to launch
+    time.sleep(10)
     return driver
 
 def send_text_via_adb(text):
-    
     formatted_text = text.replace(" ", "%s")
     adb_command = f"/Users/mohamedakkim/Library/Android/sdk/platform-tools/adb shell input text {formatted_text}"
     
@@ -38,39 +34,25 @@ def send_text_via_adb(text):
         print(f"Text sent via ADB: {text}")
     except subprocess.CalledProcessError as e:
         print(f"Failed to send text via ADB: {e}")
-        
+
 def capture_and_compare(driver, reference_img_path, screenshot_path):
-    """Take a screenshot and compare it with a reference image."""
     driver.save_screenshot(screenshot_path)
     print(f"Screenshot saved at: {screenshot_path}")
     time.sleep(5)
-    
     similarity = compare_images(reference_img_path, screenshot_path)
-    if similarity:
-        print("✅ The current screen matches the reference image!")
-        return True
-    else:
-        print("❌ The current screen does NOT match the reference image!")
-        return False
+    return similarity
 
 def capture_region_screenshot(driver, region, screenshot_path):
-    
-    # Take a full screenshot using Appium
     screenshot = driver.get_screenshot_as_base64()
     screenshot = Image.open(BytesIO(base64.b64decode(screenshot)))
-
-    # Define the region (x, y, width, height)
     x, y, width, height = region
     cropped_image = screenshot.crop((x, y, x + width, y + height))
-
-    # Save the cropped screenshot
     cropped_image.save(screenshot_path)
     print(f"Screenshot of the region saved at: {screenshot_path}")
-    
+
 def compare_images(reference_img_path, current_img_path, threshold=80):
-    """Compare two images using SSIM (Structural Similarity Index)."""
-    ref_img = Image.open(reference_img_path).convert("L")  # Convert to grayscale
-    curr_img = Image.open(current_img_path).convert("L")  # Convert to grayscale
+    ref_img = Image.open(reference_img_path).convert("L")
+    curr_img = Image.open(current_img_path).convert("L")
 
     if ref_img.size != curr_img.size:
         curr_img = curr_img.resize(ref_img.size)
@@ -82,37 +64,37 @@ def compare_images(reference_img_path, current_img_path, threshold=80):
     print(f"Image similarity: {similarity:.2f}")
     return similarity >= threshold
 
-def capture_and_extract_text_with_data(driver):
-    
+def capture_and_extract_text_with_data(driver, region=None):
     screenshot = driver.get_screenshot_as_base64()
     screenshot = Image.open(BytesIO(base64.b64decode(screenshot)))
     
-    # Preprocess the image: Convert to grayscale and increase contrast
+    if region:
+        x, y, width, height = region
+        screenshot = screenshot.crop((x, y, x + width, y + height))
+
     gray_image = screenshot.convert('L')
     enhancer = ImageEnhance.Contrast(gray_image)
     gray_image = enhancer.enhance(2)
     
-    # Perform OCR with custom configuration for better accuracy
     custom_config = r'--oem 3 --psm 6'
     data = pytesseract.image_to_data(gray_image, output_type=pytesseract.Output.DICT, config=custom_config)
+    
+    # Collect all text in a single line and print it
+    all_text = " ".join([word for word in data['text'] if word.strip() != ""])
+    print(f"Extracted Text from Screen: {all_text}")
     
     return data
 
 def tap_if_text_found(driver, target_text, tap_action=True, max_retries=5):
-    
     retries = 0
     found = False
     
     while retries < max_retries and not found:
         data = capture_and_extract_text_with_data(driver)
-        
-        # Split the target text into words for more flexible matching
-        target_words = target_text.lower().split()  # Split the target text into words
+        target_words = target_text.lower().split()
 
         for i, word in enumerate(data['text']):
-            # Check if all parts of the target text are present in the word
-            if all(part in word.lower() for part in target_words):  
-                print(f"Text '{target_text}' found at index {i}!")
+            if all(part in word.lower() for part in target_words):
                 x = data['left'][i]
                 y = data['top'][i]
                 width = data['width'][i]
@@ -124,19 +106,16 @@ def tap_if_text_found(driver, target_text, tap_action=True, max_retries=5):
                     driver.tap([(center_x, center_y)])
                     print(f"Tapped on the coordinates ({center_x}, {center_y})")
                 found = True
-                break  # Exit loop once the text is found and tapped or verified
+                break
 
         if not found:
             retries += 1
             print(f"Text '{target_text}' not found. Retrying {retries}/{max_retries}...")
-            time.sleep(2)  # Optional: add a small delay before retrying
+            time.sleep(2)
 
-    if not found:
-        print(f"Text '{target_text}' not found after {max_retries} retries.")
     return found
 
 def server_selection(driver):
-    # List of actions for tapping coordinates and performing actions
     actions = [
         {"coords": (625, 296), "message": "Server Selection", "sleep_time": 2},
         {"coords": (596, 513), "message": "Server Selected", "sleep_time": 2},
@@ -144,46 +123,75 @@ def server_selection(driver):
         {"coords": (2020, 977), "message": "T & C Selected", "sleep_time": 2}
     ]
     
-    # List of target texts to search and tap or verify
     target_texts = [
         {'target_text': 'Google', 'tap_action': True, 'sleep_time': 3},
         {'target_text': 'akkim@mayhem-studios.com', 'tap_action': True, 'sleep_time': 15}
     ]
     
-    # Execute actions
+    # Print out all the text found on the screen
+    capture_and_extract_text_with_data(driver)
+    
     for action in actions:
         driver.tap([action["coords"]])
         print(action["message"])
         time.sleep(action["sleep_time"])
 
-    # Execute target text searches
     for target in target_texts:
         print(f"Searching for text: {target['target_text']}")
         tap_if_text_found(driver, target['target_text'], tap_action=target['tap_action'])
         time.sleep(target['sleep_time'])
 
-def game_initiate(driver):
+def daily_login(driver):
+    target_text = "TODAY"
     
-    target_text = "Battle Royale Dhantara"
-    tap_if_text_found(driver, target_text, tap_action= True)
-    time.sleep(10)
+    # Extract all text and print it out before proceeding
+    capture_and_extract_text_with_data(driver)
+    
+    # Search for the target text 'TODAY'
+    found = tap_if_text_found(driver, target_text, tap_action=False, max_retries=3)
+    
+    if found:
+        # If 'TODAY' is found, continue with searching for the next target text (e.g., "CONTINUE")
+        next_target_text = "CONTINUE"
+        print(f"Searching for '{next_target_text}' after '{target_text}' was found.")
+        
+        # Perform the search and tap action for the next target text
+        tap_if_text_found(driver, next_target_text, tap_action=True, max_retries=3)
+        
+        # Set flag to skip coordinate tap in game_initiate
+        skip_coordinate_tap = True
+    else:
+        # If 'TODAY' is not found, print and skip this function
+        print(f"Text '{target_text}' not found. Skipping daily login.")
+        # Proceed to the game initiation if 'TODAY' is not found
+        skip_coordinate_tap = False
+        game_initiate(driver, skip_coordinate_tap)
 
-    driver.tap([(2380, 1350)])
-    print("Map screen tapped")
-    time.sleep(2)
-
-    target_text = "Continue"
-    tap_if_text_found(driver, target_text, tap_action= True)
-    time.sleep(10)
+def game_initiate(driver, skip_coordinate_tap=False):
+    # Skip the coordinate tap if the daily_login was executed
+    if not skip_coordinate_tap:
+        tap_x5, tap_y5 = 2380, 1350
+        driver.tap([(tap_x5, tap_y5)])
+        print(f"Tapped on coordinates ({tap_x5}, {tap_y5})")
+        time.sleep(3)
+    
+    target_texts = [
+        {'target_text': 'TOM TestMap', 'tap_action': True, 'sleep_time': 3},
+        {'target_text': 'CONTINUE', 'tap_action': True, 'sleep_time': 10}
+    ]
+    
+    for target in target_texts:
+        print(f"Searching for text: {target['target_text']}")
+        tap_if_text_found(driver, target['target_text'], tap_action=target['tap_action'])
+        time.sleep(target['sleep_time'])
 
 def profile_validation(driver):
-    
     driver.tap([(100, 100)])
     print("Profile tapped")
     time.sleep(3)
 
     target_text = "STATISTICS"
-    tap_if_text_found(driver, target_text, tap_action= True)  # Tap on 'History' text
+    tap_if_text_found(driver, target_text, tap_action=True)
     
     target_texts = [
         { 'target_text': 'CASUAL', 'tap_action': True, 'sleep_time': 3 },
@@ -196,26 +204,14 @@ def profile_validation(driver):
         tap_action = target['tap_action']
         sleep_time = target['sleep_time']
         
-        print(f"Searching for text: {target_text}")
-        
-        # Search and optionally tap on the text
         tap_if_text_found(driver, target_text, tap_action=tap_action)
-        
-        print(f"Sleeping for {sleep_time} seconds after searching '{target_text}'")
         time.sleep(sleep_time)
-        
+
 def wallet_validation(driver):
-   
-    
-    
-    region = (1070, 135, 872, 1149)  # Adjust this to the region you need
-    screenshot_path_to_region= "/Users/mohamedakkim/eclipse-workspace/PythonMeta/Screenshots/Lobby.png"
-    
-    
-#    capture_region_screenshot(driver, region, screenshot_path_for_region)
+    region = (1070, 135, 872, 1149)
+    screenshot_path_to_region = "/Users/mohamedakkim/eclipse-workspace/PythonMeta/Screenshots/Lobby.png"
     time.sleep(10)
     
-    # Compare the region screenshot with the reference image
     reference_img_path = "/Users/mohamedakkim/eclipse-workspace/PythonMeta/References/Screenshot_20250324_145628_Underworld Gang Wars - Beta.jpg"
     capture_and_compare(driver, reference_img_path, screenshot_path_to_region)
     
@@ -223,15 +219,20 @@ def wallet_validation(driver):
         print("✅ The region matches the reference image!")
     else:
         print("❌ The region does NOT match the reference image!")
+
+def leaderboard_validation(driver):
+    tap_x6, tap_y6 = 90, 885
+    driver.tap([(tap_x6, tap_y6)])
+    time.sleep(3)
     
-    
-    
+    target_text = "No Leaderboards are currently active!"
+    tap_if_text_found(driver, target_text, tap_action=False, max_retries=3)
 
 def main():
     driver = setup_device()  # Setup device and start the app
     server_selection(driver)  # Call server selection
-#    game_initiate(driver)  # Start game initiation
- #   profile_validation(driver)  # Perform profile validation
-    wallet_validation(driver)
+    daily_login(driver)
+    game_initiate(driver, skip_coordinate_tap=False)
+
 if __name__ == "__main__":
     main()
