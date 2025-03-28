@@ -142,7 +142,7 @@ def server_selection(driver):
         time.sleep(target['sleep_time'])
 
 def daily_login(driver):
-    target_text = "TODAY"
+    target_text = "TOMORROW"
     
     # Extract all text and print it out before proceeding
     capture_and_extract_text_with_data(driver)
