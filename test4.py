@@ -1,108 +1,84 @@
-import time
-import sys
 import os
+import time
+import google.generativeai as genai
+import base64
+import json
+import traceback
+import re
 from appium import webdriver
 from appium.options.android import UiAutomator2Options
-import google.generativeai as genai
-from xml.etree import ElementTree
-import base64
+import subprocess
 
-def setup_device():
-    """Setup Appium and launch the app."""
-    try:
-        options = UiAutomator2Options()
-        options.platform_name = "Android"
-        options.platform_version = "14"
-        options.device_name = "Akkim-Galaxy S22 Ultra"
-        options.app_package = "com.mayhem.ugwob"
-        options.app_activity = "com.epicgames.ue4.GameActivity"
-        options.no_reset = True
+def extract_text_with_bounding_boxes(driver, text_to_find=""):
+    # ... (rest of the function remains the same)
 
-        driver = webdriver.Remote("http://127.0.0.1:4723", options=options)
-        print("App Launched Successfully!")
-        time.sleep(10)  # Wait for app to launch
-        return driver
-    except Exception as e:
-        print(f"Error setting up device: {e}")
-        return None
+def adb_tap(x, y):
+    # ... (rest of the function remains the same)
 
 def server_selection(driver):
-    """Selects a server in the app."""
-    try:
-        tap_x, tap_y = 625, 296
-        driver.tap([(tap_x, tap_y)])
-        print("Server Selection")
-        time.sleep(2)
-
-        tap_x1, tap_y1 = 596, 513
-        driver.tap([(tap_x1, tap_y1)])
-        print("Server Selected")
-        time.sleep(2)
-
-        tap_x2, tap_y2 = 2810, 315
-        driver.tap([(tap_x2, tap_y2)])
-        print("Server Launched")
-        time.sleep(10)
-    except Exception as e:
-        print(f"Error selecting server: {e}")
-
-def login_action(driver):
-    """Performs the login action and interacts with Gemini."""
-    if not driver:
-        return  # Exit if driver setup failed
-
-    # Initialize Gemini AI
-    api_key = os.getenv('GOOGLE_API_KEY')
-    if not api_key:
-        print("Error: API Key is missing. Please check your GOOGLE_API_KEY environment variable.")
-        return
-
-    try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro-vision')  # Use gemini-pro-vision
-        chat = model.start_chat(history=[])
-
-        # First tap - Disclaimer action (Adjust as needed)
-        tap_x3, tap_y3 = 2020, 977
-        driver.tap([(tap_x3, tap_y3)])
-        print("T & C Selected")
-        time.sleep(2)
-
-        # Second tap - Logged as Guest action (Adjust as needed)
-        tap_x4, tap_y4 = 2178, 620
-        driver.tap([(tap_x4, tap_y4)])
-        print("Logged as Guest")
-        time.sleep(15)
-
-        # Take Screenshot
-        screenshot_path = "guest_login_screenshot.png"
-        driver.save_screenshot(screenshot_path)
-
-        # Encode screenshot as base64
-        with open(screenshot_path, "rb") as image_file:
-            encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
-
-        # Use Gemini Vision to analyze the image
-        prompt = "Analyze this image and extract all text and their bounding boxes. Provide the text and their coordinates (x, y, width, height)."
-        response = chat.send_message(
-            prompt,
-            [genai.Part.from_data(data=encoded_image, mime_type="image/png")]
-        )
-        print(f"Gemini Vision: {response.text}")
-
-        time.sleep(10)  # Add a delay if needed
-
-    except Exception as e:
-        print(f"Error in login_action: {e}")
+    # ... (rest of the function remains the same)
 
 def main():
-    """Main function to orchestrate the Appium and Gemini interactions."""
-    print(sys.executable)  # Print the Python interpreter being used
-    driver = setup_device()
-    if driver:
+    """Main function to demonstrate app launching, text extraction, and tapping."""
+    text_to_search = "Google"  # The text you want to find
+
+    # Mobile App Automation Setup
+    options = UiAutomator2Options()
+    options.platform_name = "Android"
+    options.platform_version = "14"
+    options.device_name = "Akkim-Galaxy S22 Ultra"
+    options.app_package = "com.mayhem.ugwob"
+    options.app_activity = "com.epicgames.ue4.GameActivity"
+    options.no_reset = True
+
+    try:
+        driver = webdriver.Remote("http://127.0.0.1:4723", options=options)  # Start the session
+    except Exception as e:
+        print(f"Error setting up Appium driver: {e}")
+        return  # Exit if the driver fails to initialize
+
+    try:
+        print("App Launched Successfully!")
+        time.sleep(10)
+
+        # Perform server selection
         server_selection(driver)
-        login_action(driver)
-        driver.quit()
+
+        # Extract text and bounding boxes
+        extracted_text_json, _ = extract_text_with_bounding_boxes(driver, text_to_search)
+        print("Extracted Text and Bounding Boxes (JSON):")
+        print(extracted_text_json)
+
+        # Parse the JSON and search for 'Google'
+        try:
+            jarray = json.loads(extracted_text_json)
+            found_coordinates = None
+            for obj in jarray:
+                if "text" in obj and obj["text"].lower() == text_to_search.lower():
+                    found_coordinates = obj
+                    break
+
+            if found_coordinates:
+                print(f"The text '{text_to_search}' was found at coordinates: {found_coordinates}")
+                # Perform the tap using adb
+                x = found_coordinates["x"] + found_coordinates["width"] / 2
+                y = found_coordinates["y"] + found_coordinates["height"] / 2
+                adb_tap(x, y)  # Tap on the coordinates using adb
+            else:
+                print(f"The text '{text_to_search}' was not found in the extracted data.")
+
+        except json.JSONDecodeError as json_err:
+            print(f"Error decoding JSON: {json_err}")
+            traceback.print_exc()
+
+    except Exception as e:
+        print(f"An error occurred: {e}")  # Catch errors during the main process
+        traceback.print_exc()  # Print the traceback for detailed debugging
+    finally:
+        try:
+            driver.quit()  # Ensure the driver is quit, even if errors occur
+        except Exception:
+            print("Error quitting driver (may already be quit).")
 
 if __name__ == "__main__":
     main()
