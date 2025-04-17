@@ -8,31 +8,24 @@ from appium import webdriver
 from appium.options.android import UiAutomator2Options
 import shutil
 
+API_KEY = 'K81674033288957'  # Static API key
 
 # Function to compress the screenshot to ensure it is below 1MB without resizing the image dimensions
 def compress_image(input_path, output_path):
-    # Get image size in KB
-    file_size_kb = os.path.getsize(input_path) / 1024
+    """Compress the image without resizing, ensuring it is under 1MB"""
+    file_size_kb = os.path.getsize(input_path) / 1024  # Convert file size to KB
 
-    if file_size_kb > 1024:
+    if file_size_kb > 1024:  # If the file is greater than 1MB
         print(f"Original size: {int(file_size_kb)} KB. Compressing...")
-
         with Image.open(input_path) as img:
-            # Convert image to RGB (this will handle transparency in PNGs)
-            img = img.convert("RGB")
-            # Save with lower quality to reduce size just below 1MB
-            img.save(output_path, format="JPEG", quality=80)
+            img = img.convert("RGB")  # Convert to RGB to handle transparency (e.g., for PNGs)
+            img.save(output_path, format="JPEG", quality=80)  # Compress and save as JPEG with quality 80
 
-        new_size_kb = os.path.getsize(output_path) / 1024
+        new_size_kb = os.path.getsize(output_path) / 1024  # Get the new size in KB
         print(f"Compressed size: {int(new_size_kb)} KB")
-
-    elif 900 <= file_size_kb <= 1024:
-        print(f"Image is between 900KB and 1MB ({int(file_size_kb)} KB). No compression applied.")
-        shutil.copy(input_path, output_path)
-
-    else:
-        print(f"Image is already under 900KB ({int(file_size_kb)} KB). No action needed.")
-        shutil.copy(input_path, output_path)
+    else:  # If the image is already under 1MB
+        shutil.copy(input_path, output_path)  # No compression needed if it's under 1MB
+        print(f"Image is already under 1MB ({int(file_size_kb)} KB). No compression applied.")
 
     return output_path
 
@@ -61,7 +54,8 @@ def ocr_space_file(filename, api_key):
                 'apikey': api_key,
                 'language': 'eng',
                 'isOverlayRequired': 'true'
-            }
+            },
+            timeout=60
         )
 
     if r.status_code != 200:
@@ -100,7 +94,7 @@ def ocr_space_file(filename, api_key):
                             'height': height
                         }
                     })
-            print(f"Text extraction complete. Extracted text data: {json.dumps(output, indent=4)}")
+            # Return the extracted data as JSON without printing
             return output
         else:
             print("Error: TextOverlay not found in the response.")
@@ -112,7 +106,7 @@ def ocr_space_file(filename, api_key):
 
 # Function to find the reference word from the extracted text data
 def find_text_and_get_coords(extracted_text_info, reference_word):
-    """Searches for the reference word in the extracted text info and returns its coordinates."""
+    """Searches for reference words in the extracted text info and returns their coordinates."""
     print(f"Searching for reference word: {reference_word}")
     if extracted_text_info:
         for item in extracted_text_info:
@@ -173,11 +167,11 @@ def main():
                 extracted_text_info = ocr_space_file(compressed_image_path, 'K81674033288957')
 
                 if extracted_text_info:
-                    # Step 4: Print the extracted text in JSON array list format
+                    # Step 4: Print the extracted text in JSON array list format (only once)
                     print(f"Extracted Data:\n{json.dumps(extracted_text_info, indent=4)}")
 
                     # Step 5: Search for the reference word
-                    reference_word = "TOM"
+                    reference_word = "x"
                     text_coords = find_text_and_get_coords(extracted_text_info, reference_word)
 
                     # Step 6: Tap if reference word found
@@ -208,4 +202,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
