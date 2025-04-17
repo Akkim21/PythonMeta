@@ -86,6 +86,7 @@ def tap_action(driver, x, y, message, sleep_time=3):
     time.sleep(3)
 
 def server_selection(driver):
+
     tap_x, tap_y = 625, 296
     driver.tap([(tap_x, tap_y)])
     print("Server Selection")
