@@ -171,7 +171,7 @@ def main():
                     print(f"Extracted Data:\n{json.dumps(extracted_text_info, indent=4)}")
 
                     # Step 5: Search for the reference word
-                    reference_word = "akkim@mayhem-studios.com"
+                    reference_word = "Back"
                     text_coords = find_text_and_get_coords(extracted_text_info, reference_word)
 
                     # Step 6: Tap if reference word found

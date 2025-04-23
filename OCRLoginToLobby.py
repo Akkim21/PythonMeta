@@ -9,10 +9,8 @@ from appium.options.android import UiAutomator2Options
 import shutil
 
 API_KEY = 'K81674033288957'  # Static API key
-
 # Fixed path for saving compressed images
 compressed_image_path = "/Users/mohamedakkim/PycharmProjects/PythonMeta/ApiCompressed/compressed_screenshot.jpg"
-
 
 # Function to compress the screenshot to ensure it is below 1MB without resizing the image dimensions
 def compress_image(input_path, output_path):
@@ -33,9 +31,8 @@ def compress_image(input_path, output_path):
 
     return output_path
 
-
 # Function to take a screenshot
-def take_screenshot(driver, screenshot_path="screenshot.png"):
+def take_screenshot(driver, screenshot_path="/Users/mohamedakkim/PycharmProjects/PythonMeta/Screenshots/screenshot.png"):
     """Captures a screenshot"""
     try:
         driver.save_screenshot(screenshot_path)
@@ -44,7 +41,6 @@ def take_screenshot(driver, screenshot_path="screenshot.png"):
     except Exception as e:
         print(f"Error taking screenshot: {e}")
         return None
-
 
 # Function to send the image to OCR.Space API for text extraction
 def ocr_space_file(filename, api_key):
@@ -106,7 +102,6 @@ def ocr_space_file(filename, api_key):
         print(f"Error: {result['ErrorMessage']}")
         return None
 
-
 # Function to find the reference word from the extracted text data
 def find_text_and_get_coords(extracted_text_info, reference_word):
     """Searches for reference words in the extracted text info and returns their coordinates."""
@@ -122,7 +117,6 @@ def find_text_and_get_coords(extracted_text_info, reference_word):
         print(f"Reference word '{reference_word}' not found.")
     return coords
 
-
 # Function to simulate an ADB tap at the given coordinates
 def adb_tap(x, y):
     """Simulates a tap at the given x, y coordinates using ADB."""
@@ -136,28 +130,6 @@ def adb_tap(x, y):
         print("Error: ADB command not found.")
     except Exception as e:
         print(f"An unexpected error occurred during ADB tap: {e}")
-
-
-def setup_device():
-    """Setup Appium and launch the app."""
-    options = UiAutomator2Options()
-    options.platform_name = "Android"
-    options.platform_version = "14"
-    options.device_name = "Akkim-Galaxy S22 Ultra"
-    options.app_package = "com.mayhem.ugwob"
-    options.app_activity = "com.epicgames.ue4.GameActivity"
-    options.new_command_timeout = 300
-    options.no_reset = True
-
-    try:
-        driver = webdriver.Remote("http://127.0.0.1:4723", options=options)
-        print("App Launched Successfully!")
-        time.sleep(10)  # Wait for app to launch
-        return driver
-    except Exception as e:
-        print(f"Error in setup_device: {e}")
-        return None
-
 
 # Reusable function to handle searching for a keyword, tapping, and waiting
 def search_and_tap(driver, reference_word, extracted_text_info, delay_seconds=5):
@@ -179,15 +151,12 @@ def search_and_tap(driver, reference_word, extracted_text_info, delay_seconds=5)
             print(f"Tapping on '{reference_word}' at ({tap_x}, {tap_y})")
             adb_tap(tap_x, tap_y)
 
-            # Wait before the next tap if multiple occurrences exist
-            if idx < len(text_coords) - 1:
-                print(f"Waiting for {delay_seconds} seconds before the next tap...")
-                time.sleep(delay_seconds)  # Delay between taps
+            # Ensure a delay after each tap, even if there's only one occurrence
+            print(f"Waiting for {delay_seconds} seconds before the next tap...")
+            time.sleep(delay_seconds)  # Delay between taps
     else:
         print(f"'{reference_word}' not found in the image.")
 
-
-# Reusable function to handle login and store actions
 # Reusable function to handle searching for a keyword, tapping, and waiting
 def process_keywords(driver, keywords, delay_seconds=5):
     try:
@@ -208,45 +177,68 @@ def process_keywords(driver, keywords, delay_seconds=5):
     except Exception as e:
         print(f"An error occurred: {e}")
 
+def setup_device():
+
+    options = UiAutomator2Options()
+    options.platform_name = "Android"
+    options.platform_version = "14"
+    options.device_name = "Akkim-Galaxy S22 Ultra"
+    options.app_package = "com.mayhem.ugwob"
+    options.app_activity = "com.epicgames.ue4.GameActivity"
+    options.new_command_timeout = 300
+    options.no_reset = True
+
+    try:
+        driver = webdriver.Remote("http://127.0.0.1:4723", options=options)
+        print("App Launched Successfully!")
+        time.sleep(10)
+        return driver
+    except Exception as e:
+        print(f"Error in setup_device: {e}")
+        return None
 
 def login(driver):
 
-    # Tap on T & C
     tap_x3, tap_y3 = 2020, 977
     driver.tap([(tap_x3, tap_y3)])
     print("T & C Selected")
-    time.sleep(5)  # Wait after tapping T&C
+    time.sleep(2)  # Wait after tapping T&C
 
-    # Process the first round of keywords (google)
-    print("First round of keyword search and tap:")
+    print("Searching for Google")
     process_keywords(driver, ['google'])  # You can keep delay in the process_keywords function
     time.sleep(5)  # Wait for 10 seconds after tapping "google"
 
-    # Process the second round of keywords (gmail)
-    print("Second round of keyword search and tap:")
-    process_keywords(driver, ['preprod2121@gmail.com'])  # You can keep delay in the process_keywords function
-    time.sleep(45)  # Wait for 15 seconds after tapping "gmail"
-
+    print("Searching the email to log")
+    process_keywords(driver, ['akkim@mayhem-studios.com'])  # You can keep delay in the process_keywords function
+    time.sleep(15)  # Wait for 15 seconds after tapping "gmail"
 
 def store(driver):
 
-    # Process the first round of keywords (google)
-    print("First round of keyword search and tap:")
-    process_keywords(driver, ['Store'])  # You can keep delay in the process_keywords function
-    time.sleep(5)  # Wait for 10 seconds after tapping "google"
+    print("Searching for Store in lobby")
+    process_keywords(driver, ['STORE'])
 
-    # Process the second round of keywords (gmail)
-    print("Second round of keyword search and tap:")
-    process_keywords(driver, ['Khalihan top'])  # You can keep delay in the process_keywords function
-    time.sleep(5)  # Wait for 15 seconds after tapping "gmail"
+    print("Searching for back")
+    process_keywords(driver, ['Back'])
 
-    # Process the second round of keywords (gmail)
-    print("Second round of keyword search and tap:")
-    process_keywords(driver, ['back'])  # You can keep delay in the process_keywords function
-    time.sleep(5)  # Wait for 15 seconds after tapping "gmail"
+def warehouse(driver, keyword=['Vehicle', 'Back']):
+
+    print("Searching for warehouse in lobby")
+    process_keywords(driver, ['Warehouse'])
+
+    print("Searching for Weapons in warehouse after its found tap on back")
+    process_keywords(driver, keyword)
+
+def profile(driver, keywords=['Weapons','History', 'Overview', 'Back']):
+    print('Searching for user name')
+
+    process_keywords(driver, ['Usep'])
+
+    process_keywords(driver, keywords)
 
 if __name__ == "__main__":
     driver = setup_device()
-    if driver:  # Only proceed if the driver is successfully initialized
+    if driver:
         login(driver)
         store(driver)
+        warehouse(driver, keyword=['Weapons', 'Back'])
+        profile(driver, keywords=['Weapons','History', 'Overview', 'Back'])
