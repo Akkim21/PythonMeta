@@ -150,9 +150,6 @@ def search_and_tap(driver, reference_word, extracted_text_info, delay_seconds=5)
 
             print(f"Tapping on '{reference_word}' at ({tap_x}, {tap_y})")
             adb_tap(tap_x, tap_y)
-
-            # Ensure a delay after each tap, even if there's only one occurrence
-            print(f"Waiting for {delay_seconds} seconds before the next tap...")
             time.sleep(delay_seconds)  # Delay between taps
     else:
         print(f"'{reference_word}' not found in the image.")
@@ -234,6 +231,7 @@ def profile(driver, keywords=['Weapons','History', 'Overview', 'Back']):
     process_keywords(driver, ['Usep'])
 
     process_keywords(driver, keywords)
+
 
 if __name__ == "__main__":
     driver = setup_device()
